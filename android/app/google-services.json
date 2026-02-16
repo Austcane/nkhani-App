@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "359443595074",
+    "project_id": "nkhani-2a8c9",
+    "storage_bucket": "nkhani-2a8c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:359443595074:android:30a81d049d95d2b61552db",
+        "android_client_info": {
+          "package_name": "com.example.nkhani"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAOP_G03K8Xps1gGBOKKh__jRk7hWLtVo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

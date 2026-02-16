@@ -1,0 +1,62 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nkhani/features/auth/login_screen.dart';
+import 'package:nkhani/features/home/home_screen.dart';
+import 'package:nkhani/navigation/main_navigation.dart';
+
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const NkhaniApp());
+}
+
+class NkhaniApp extends StatelessWidget {
+  const NkhaniApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Nkhani',
+      theme: ThemeData(
+        primaryColor: const Color(0xFF8A1E78),
+        scaffoldBackgroundColor: Colors.white,
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF8A1E78),
+          secondary: Color(0xFFF8F148),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF8A1E78),
+          foregroundColor: Colors.white,
+        ),
+      ),
+      home: const MainNavigation(),
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasData) {
+          return const HomeScreen();
+        }
+
+        return const LoginScreen();
+      },
+    );
+  }
+}
