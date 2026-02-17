@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nkhani/features/auth/login_screen.dart';
 import 'package:nkhani/features/home/home_screen.dart';
 import 'package:nkhani/navigation/main_navigation.dart';
+import 'package:nkhani/features/auth/user_service.dart';
+import 'package:nkhani/features/home/user_home_screen.dart';
+import 'package:nkhani/features/home/admin_home_screen.dart';
 
 
 void main() async {
@@ -22,17 +25,12 @@ class NkhaniApp extends StatelessWidget {
       title: 'Nkhani',
       theme: ThemeData(
         primaryColor: const Color(0xFF8A1E78),
-        scaffoldBackgroundColor: Colors.white,
         colorScheme: const ColorScheme.light(
           primary: Color(0xFF8A1E78),
           secondary: Color(0xFFF8F148),
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF8A1E78),
-          foregroundColor: Colors.white,
-        ),
       ),
-      home: const MainNavigation(),
+      home: const AuthWrapper(), // ✅ THIS IS KEY
     );
   }
 }
@@ -45,18 +43,22 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        // Loading
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
+        // Logged in
         if (snapshot.hasData) {
-          return const HomeScreen();
+          return const MainNavigation();
         }
 
+        // Logged out
         return const LoginScreen();
       },
     );
   }
 }
+

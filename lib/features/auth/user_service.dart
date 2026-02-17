@@ -9,6 +9,6 @@ class UserService {
 
     if (!doc.exists) return null;
 
-    return AppUser.fromFirestore(doc);
+    return AppUser.fromMap(uid, doc.data()!);
   }
 }
