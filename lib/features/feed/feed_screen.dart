@@ -11,7 +11,7 @@ class FeedScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Latest News'),
       ),
-      body: StreamBuilder<List<NewsArticle>>(
+      body: StreamBuilder<List<News>>(
         stream: NewsService().getNewsFeed(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -42,7 +42,7 @@ class FeedScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: Text(
-                    news.author,
+                    news.authorId, // UID for now
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),

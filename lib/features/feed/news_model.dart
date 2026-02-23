@@ -1,29 +1,40 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class NewsArticle {
+class News {
   final String id;
   final String title;
   final String content;
-  final String author;
-  final Timestamp createdAt;
+  final String authorId;
+  final DateTime createdAt;
+  final bool published;
 
-  NewsArticle({
+  News({
     required this.id,
     required this.title,
     required this.content,
-    required this.author,
+    required this.authorId,
     required this.createdAt,
+    required this.published,
   });
 
-  factory NewsArticle.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-
-    return NewsArticle(
-      id: doc.id,
+  factory News.fromMap(Map<String, dynamic> data, String id) {
+    return News(
+      id: id,
       title: data['title'] ?? '',
       content: data['content'] ?? '',
-      author: data['author'] ?? '',
-      createdAt: data['createdAt'] ?? Timestamp.now(),
+      authorId: data['authorId'] ?? '',
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      published: data['published'] ?? true,
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'content': content,
+      'authorId': authorId,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'published': published,
+    };
   }
 }

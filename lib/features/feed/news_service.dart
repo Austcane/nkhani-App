@@ -5,13 +5,15 @@ class NewsService {
   final CollectionReference _newsRef =
   FirebaseFirestore.instance.collection('news');
 
-  Stream<List<NewsArticle>> getNewsFeed() {
+  Stream<List<News>> getNewsFeed() {
     return _newsRef
+        .where('published', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
-          .map((doc) => NewsArticle.fromFirestore(doc))
+          .map((doc) =>
+          News.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList();
     });
   }
