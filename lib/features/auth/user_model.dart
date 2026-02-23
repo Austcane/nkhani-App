@@ -13,7 +13,7 @@ class AppUser {
     required this.subscriptionActive,
   });
 
-  factory AppUser.fromMap(String uid, Map<String, dynamic> data) {
+  factory AppUser.fromMap(Map<String, dynamic> data, String uid) {
     return AppUser(
       uid: uid,
       name: data['name'] ?? '',
@@ -22,4 +22,6 @@ class AppUser {
       subscriptionActive: data['subscriptionActive'] ?? false,
     );
   }
+
+  bool get isAdmin => role == 'admin';
 }

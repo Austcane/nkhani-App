@@ -42,23 +42,50 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        // Loading
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      builder: (context, authSnapshot) {
+        // 1️⃣ Still checking auth state
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // Logged in
-        if (snapshot.hasData) {
-          return const MainNavigation();
+        // 2️⃣ Not logged in → Login
+        if (!authSnapshot.hasData) {
+          return const LoginScreen();
         }
 
-        // Logged out
-        return const LoginScreen();
+        final firebaseUser = authSnapshot.data!;
+
+        // 3️⃣ Logged in → fetch Firestore user
+        return FutureBuilder(
+          future: UserService().getUser(firebaseUser.uid),
+          builder: (context, userSnapshot) {
+            if (userSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (!userSnapshot.hasData || userSnapshot.data == null) {
+              return const Scaffold(
+                body: Center(child: Text("User profile not found")),
+              );
+            }
+
+            final appUser = userSnapshot.data!;
+
+            // 4️⃣ Route by role
+            if (appUser.role == 'admin') {
+              return const AdminHomeScreen();
+            }
+
+            return const MainNavigation(); // normal user
+          },
+        );
       },
     );
   }
 }
+
 
