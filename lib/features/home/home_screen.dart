@@ -1,15 +1,25 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:nkhani/features/auth/user_service.dart';
+import 'package:flutter/material.dart';
 import 'package:nkhani/features/auth/user_model.dart';
+import 'package:nkhani/features/auth/user_service.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  void _logout(BuildContext context) async {
+  Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
-    // No Navigator code needed.
-    // AuthWrapper will automatically redirect to LoginScreen.
+  }
+
+  String _accessSummary(AppUser appUser) {
+    if (appUser.subscriptionActive) {
+      return 'Paid subscription active';
+    }
+
+    if (appUser.isTrialActive) {
+      return 'Free trial active (${appUser.trialDaysLeft} day(s) left)';
+    }
+
+    return 'No active subscription';
   }
 
   @override
@@ -22,54 +32,53 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => _logout(context),
+            onPressed: _logout,
             tooltip: 'Logout',
           ),
         ],
       ),
       body: user == null
-          ? const Center(child: Text("No user logged in"))
-          : FutureBuilder<AppUser?>(
-        future: UserService().getUser(user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          ? const Center(child: Text('No user logged in'))
+          : StreamBuilder<AppUser?>(
+              stream: UserService().watchUser(user.uid),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (!snapshot.hasData) {
-            return const Center(
-              child: Text(
-                "User data not found",
-                style: TextStyle(fontSize: 16),
-              ),
-            );
-          }
+                if (!snapshot.hasData || snapshot.data == null) {
+                  return const Center(
+                    child: Text(
+                      'User data not found',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  );
+                }
 
-          final appUser = snapshot.data!;
+                final appUser = snapshot.data!;
 
-          return Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Welcome, ${appUser.name} 👋",
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome, ${appUser.name}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text('Email: ${appUser.email}'),
+                      Text('Role: ${appUser.role}'),
+                      Text('Access: ${appUser.hasAccess ? "Enabled" : "Locked"}'),
+                      Text('Status: ${_accessSummary(appUser)}'),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text("Email: ${appUser.email}"),
-                Text("Role: ${appUser.role}"),
-                Text(
-                  "Subscription: ${appUser.subscriptionActive ? "Active" : "Inactive"}",
-                ),
-              ],
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }

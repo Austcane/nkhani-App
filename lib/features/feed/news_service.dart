@@ -3,16 +3,54 @@ import 'news_model.dart';
 
 class NewsService {
   final CollectionReference _newsRef =
-  FirebaseFirestore.instance.collection('news');
+      FirebaseFirestore.instance.collection('news');
 
-  Stream<List<NewsArticle>> getNewsFeed() {
+  Stream<List<News>> getNewsFeed() {
     return _newsRef
-        .orderBy('createdAt', descending: true)
+        .where('published', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => NewsArticle.fromFirestore(doc))
+      final items = snapshot.docs
+          .map((doc) => News.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList();
+      items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return items;
     });
+  }
+
+  Stream<List<News>> getAdminNewsFeed(String authorId) {
+    return _newsRef
+        .where('authorId', isEqualTo: authorId)
+        .snapshots()
+        .map((snapshot) {
+      final items = snapshot.docs
+          .map((doc) => News.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+      items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return items;
+    });
+  }
+
+  Future<void> createNews({
+    required String title,
+    required String content,
+    required String authorId,
+    String? organizationId,
+  }) async {
+    await _newsRef.add({
+      'title': title,
+      'content': content,
+      'authorId': authorId,
+      'organizationId': organizationId,
+      'published': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> setPublished({
+    required String newsId,
+    required bool published,
+  }) async {
+    await _newsRef.doc(newsId).update({'published': published});
   }
 }

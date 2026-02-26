@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
-import '../home/home_screen.dart';
-import 'package:nkhani/features/auth/login_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -21,7 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool isLoading = false;
 
-  void register() async {
+  Future<void> register() async {
     setState(() => isLoading = true);
 
     try {
@@ -32,20 +27,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (user == null) {
-        throw Exception("User creation failed");
+        throw Exception('User creation failed');
       }
 
-      // 🔒 ENSURE widget is still mounted before navigation
       if (!mounted) return;
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (route) => false,
-      );
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Registration failed: $e")),
+        SnackBar(content: Text('Registration failed: $e')),
       );
     } finally {
       if (mounted) {
@@ -54,36 +44,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Register")),
+      appBar: AppBar(title: const Text('Register')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Name")),
-            TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Email")),
-            TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: "Password")),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Password'),
+            ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: isLoading ? null : register,
               child: isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("Register"),
+                  : const Text('Register'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
+                Navigator.pop(context);
               },
-              child: const Text("Already have an account? Login"),
+              child: const Text('Already have an account? Login'),
             ),
-
           ],
         ),
       ),

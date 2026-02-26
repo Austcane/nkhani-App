@@ -1,17 +1,21 @@
-# nkhani
+# Nkhani (UTHENGA)
 
-A new Flutter project.
+Digital media aggregation platform for Malawi built with Flutter and Firebase.
 
-## Getting Started
+## Setup
 
-This project is a starting point for a Flutter application.
+1. Create a Firebase project and add the platform config files.
+2. Enable Email/Password in Firebase Authentication.
+3. Deploy Firestore rules from `firestore.rules`.
+4. Deploy Firestore indexes from `firestore.indexes.json`.
 
-A few resources to get you started if this is your first Flutter project:
+## Admin bootstrap
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+1. Register a user account.
+2. Open Profile → Admin Bootstrap and tap “Make Me Admin”.
+3. This can only be done once; after that, use the Admin → Users tab.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Notes
+
+- New users get a 7-day trial.
+- Feed access requires an active trial or paid subscription.

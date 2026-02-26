@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userData().role == 'admin';
+    }
+
+    function isOrgAdmin() {
+      return isSignedIn() &&
+          userData().organizationRole == 'org_admin' &&
+          userData().organizationId != null;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() &&
+          (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (request.auth.uid == userId &&
+            request.resource.data.role == resource.data.role &&
+            request.resource.data.organizationRole == resource.data.organizationRole &&
+            request.resource.data.organizationId == resource.data.organizationId) ||
+        (request.auth.uid == userId &&
+            !exists(/databases/$(database)/documents/config/bootstrap) &&
+            request.resource.data.role == 'admin')
+      );
+      allow delete: if false;
+    }
+
+    match /config/bootstrap {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+          !exists(/databases/$(database)/documents/config/bootstrap);
+      allow update, delete: if false;
+    }
+
+    match /organizations/{orgId} {
+      allow read: if isSignedIn() &&
+          (isAdmin() || resource.data.createdBy == request.auth.uid);
+      allow create: if isSignedIn() &&
+          request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /news/{newsId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() || (isOrgAdmin() &&
+          request.resource.data.organizationId == userData().organizationId &&
+          request.resource.data.authorId == request.auth.uid &&
+          request.resource.data.published == false);
+      allow update, delete: if isAdmin();
+    }
+
+    match /reports/{reportId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}

@@ -6,17 +6,17 @@ class AdminHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Admin Dashboard")),
-      body: Center(
+      appBar: AppBar(title: const Text('Admin Dashboard')),
+      body: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Text(
-              "Admin Access Granted 🛠",
+              'Admin Access Granted',
               style: TextStyle(fontSize: 20),
             ),
             SizedBox(height: 10),
-            Text("You can manage news here."),
+            Text('You can manage news here.'),
           ],
         ),
       ),

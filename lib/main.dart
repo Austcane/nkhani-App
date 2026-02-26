@@ -1,13 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 import 'package:nkhani/features/auth/login_screen.dart';
-import 'package:nkhani/features/home/home_screen.dart';
-import 'package:nkhani/navigation/main_navigation.dart';
 import 'package:nkhani/features/auth/user_service.dart';
-import 'package:nkhani/features/home/user_home_screen.dart';
 import 'package:nkhani/features/home/admin_home_screen.dart';
-
+import 'package:nkhani/navigation/main_navigation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +27,7 @@ class NkhaniApp extends StatelessWidget {
           secondary: Color(0xFFF8F148),
         ),
       ),
-      home: const AuthWrapper(), // ✅ THIS IS KEY
+      home: const AuthWrapper(),
     );
   }
 }
@@ -43,23 +40,20 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, authSnapshot) {
-        // 1️⃣ Still checking auth state
         if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // 2️⃣ Not logged in → Login
         if (!authSnapshot.hasData) {
           return const LoginScreen();
         }
 
         final firebaseUser = authSnapshot.data!;
 
-        // 3️⃣ Logged in → fetch Firestore user
         return FutureBuilder(
-          future: UserService().getUser(firebaseUser.uid),
+          future: UserService().ensureUserProfile(firebaseUser),
           builder: (context, userSnapshot) {
             if (userSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
@@ -67,25 +61,55 @@ class AuthWrapper extends StatelessWidget {
               );
             }
 
+            if (userSnapshot.hasError) {
+              final error = userSnapshot.error;
+              var message = 'Failed to load user profile.';
+              if (error is FirebaseException &&
+                  error.code == 'permission-denied') {
+                message = 'Firestore permission denied. Update your Firestore '
+                    'rules and retry.';
+              }
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Profile Issue'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.logout),
+                      onPressed: () => FirebaseAuth.instance.signOut(),
+                    ),
+                  ],
+                ),
+                body: Center(child: Text(message)),
+              );
+            }
+
             if (!userSnapshot.hasData || userSnapshot.data == null) {
-              return const Scaffold(
-                body: Center(child: Text("User profile not found")),
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Profile Issue'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.logout),
+                      onPressed: () => FirebaseAuth.instance.signOut(),
+                    ),
+                  ],
+                ),
+                body: const Center(
+                  child: Text('User profile not found. Please retry.'),
+                ),
               );
             }
 
             final appUser = userSnapshot.data!;
 
-            // 4️⃣ Route by role
             if (appUser.role == 'admin') {
               return const AdminHomeScreen();
             }
 
-            return const MainNavigation(); // normal user
+            return const MainNavigation();
           },
         );
       },
     );
   }
 }
-
-
