@@ -2,6 +2,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nkhani/features/auth/user_model.dart';
 import 'package:nkhani/features/auth/user_service.dart';
+import 'package:nkhani/features/notifications/notification_screen.dart';
+import 'package:nkhani/features/notifications/notification_service.dart';
+import 'package:nkhani/features/organizations/org_story_submit_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -30,6 +33,54 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Nkhani Home'),
         actions: [
+          StreamBuilder<int>(
+            stream: NotificationService().watchUnreadCount(user?.uid ?? ''),
+            builder: (context, snapshot) {
+              final unread = snapshot.data ?? 0;
+              return IconButton(
+                onPressed: user == null
+                    ? null
+                    : () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationScreen(),
+                          ),
+                        );
+                      },
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.notifications),
+                    if (unread > 0)
+                      Positioned(
+                        right: -6,
+                        top: -6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            unread.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                tooltip: 'Notifications',
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
@@ -74,6 +125,32 @@ class HomeScreen extends StatelessWidget {
                       Text('Role: ${appUser.role}'),
                       Text('Access: ${appUser.hasAccess ? "Enabled" : "Locked"}'),
                       Text('Status: ${_accessSummary(appUser)}'),
+                      if (appUser.isOrganizationAdmin) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Organization Tools',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Organization ID: ${appUser.organizationId}'),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const OrganizationStorySubmitScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.post_add),
+                          label: const Text('Open Org Studio'),
+                        ),
+                      ],
                     ],
                   ),
                 );

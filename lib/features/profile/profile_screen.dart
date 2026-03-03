@@ -111,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: const Text('Activate Subscription (MWK 500)'),
                 ),
                 const SizedBox(height: 16),
-                if (!appUser.isAdmin)
+                if (!appUser.isSuperuser)
                   ElevatedButton.icon(
                     onPressed: () {
                       Navigator.push(
@@ -122,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     },
                     icon: const Icon(Icons.admin_panel_settings),
-                    label: const Text('Admin Bootstrap'),
+                    label: const Text('Superuser Bootstrap'),
                   ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(

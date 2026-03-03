@@ -22,6 +22,21 @@ dependencies:
   # Cloud Firestore
   cloud_firestore: ^4.17.0
 
+  # Firebase Storage
+  firebase_storage: ^11.7.0
+
+  # Image Picker
+  image_picker: ^1.1.2
+
+  # Image Cropper
+  image_cropper: ^11.0.0
+
+  # Image Compression
+  flutter_image_compress: ^2.3.0
+
+  # Temporary directories for image processing
+  path_provider: ^2.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

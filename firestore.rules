@@ -9,8 +9,156 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isAdmin() {
-      return isSignedIn() && userData().role == 'admin';
+    function isString(value) {
+      return value is string;
+    }
+
+    function isBool(value) {
+      return value is bool;
+    }
+
+    function isTimestamp(value) {
+      return value is timestamp;
+    }
+
+    function isMap(value) {
+      return value is map;
+    }
+
+    function isNullOrString(value) {
+      return value == null || value is string;
+    }
+
+    function hasKeys(data, keys) {
+      return data.keys().hasAll(keys);
+    }
+
+    function isValidUser(data) {
+      return hasKeys(data, [
+        'name',
+        'email',
+        'role',
+        'subscriptionActive',
+        'trialEndsAt',
+        'createdAt'
+      ]) &&
+      isString(data.name) &&
+      isString(data.email) &&
+      isString(data.role) &&
+      isBool(data.subscriptionActive) &&
+      isTimestamp(data.trialEndsAt) &&
+      isTimestamp(data.createdAt) &&
+      isNullOrString(data.organizationId) &&
+      isNullOrString(data.organizationRole);
+    }
+
+    function isValidOrganization(data) {
+      return hasKeys(data, [
+        'name',
+        'contactEmail',
+        'description',
+        'status',
+        'createdBy',
+        'createdAt'
+      ]) &&
+      isString(data.name) &&
+      isString(data.contactEmail) &&
+      isString(data.description) &&
+      (data.status in ['pending', 'approved', 'rejected']) &&
+      isString(data.createdBy) &&
+      isTimestamp(data.createdAt);
+    }
+
+    function isValidNews(data) {
+      return hasKeys(data, [
+        'title',
+        'summary',
+        'content',
+        'imageUrls',
+        'authorId',
+        'published',
+        'createdAt'
+      ]) &&
+      isString(data.title) &&
+      isNullOrString(data.summary) &&
+      isString(data.content) &&
+      (data.imageUrls is list) &&
+      data.imageUrls.size() <= 5 &&
+      isString(data.authorId) &&
+      isBool(data.published) &&
+      isTimestamp(data.createdAt) &&
+      isNullOrString(data.organizationId);
+    }
+
+    function isValidReport(data) {
+      return hasKeys(data, [
+        'newsId',
+        'reporterId',
+        'reason',
+        'status',
+        'createdAt'
+      ]) &&
+      isString(data.newsId) &&
+      isString(data.reporterId) &&
+      isString(data.reason) &&
+      (data.status in ['open', 'resolved']) &&
+      isTimestamp(data.createdAt);
+    }
+
+    function isValidAuditLog(data) {
+      return hasKeys(data, [
+        'action',
+        'actorId',
+        'targetType',
+        'targetId',
+        'metadata',
+        'createdAt'
+      ]) &&
+      isString(data.action) &&
+      isString(data.actorId) &&
+      isString(data.targetType) &&
+      isString(data.targetId) &&
+      isMap(data.metadata) &&
+      isTimestamp(data.createdAt);
+    }
+
+    function isValidDraftComment(data) {
+      return hasKeys(data, [
+        'newsId',
+        'newsAuthorId',
+        'authorId',
+        'message',
+        'createdAt'
+      ]) &&
+      isString(data.newsId) &&
+      isString(data.newsAuthorId) &&
+      isString(data.authorId) &&
+      isString(data.message) &&
+      isTimestamp(data.createdAt) &&
+      isNullOrString(data.organizationId);
+    }
+
+    function isValidNotification(data) {
+      return hasKeys(data, [
+        'userId',
+        'title',
+        'body',
+        'type',
+        'read',
+        'metadata',
+        'createdAt'
+      ]) &&
+      isString(data.userId) &&
+      isString(data.title) &&
+      isString(data.body) &&
+      isString(data.type) &&
+      isBool(data.read) &&
+      isMap(data.metadata) &&
+      isTimestamp(data.createdAt);
+    }
+
+    function isSuperuser() {
+      return isSignedIn() && userData().role == 'superuser';
     }
 
     function isOrgAdmin() {
@@ -21,18 +169,20 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn() &&
-          (request.auth.uid == userId || isAdmin());
-      allow create: if isSignedIn() && request.auth.uid == userId;
+          (request.auth.uid == userId || isSuperuser());
+      allow create: if isSignedIn() &&
+          request.auth.uid == userId &&
+          isValidUser(request.resource.data);
       allow update: if isSignedIn() && (
-        isAdmin() ||
+        isSuperuser() ||
         (request.auth.uid == userId &&
             request.resource.data.role == resource.data.role &&
             request.resource.data.organizationRole == resource.data.organizationRole &&
             request.resource.data.organizationId == resource.data.organizationId) ||
         (request.auth.uid == userId &&
             !exists(/databases/$(database)/documents/config/bootstrap) &&
-            request.resource.data.role == 'admin')
-      );
+            request.resource.data.role == 'superuser')
+      ) && isValidUser(request.resource.data);
       allow delete: if false;
     }
 
@@ -45,26 +195,68 @@ service cloud.firestore {
 
     match /organizations/{orgId} {
       allow read: if isSignedIn() &&
-          (isAdmin() || resource.data.createdBy == request.auth.uid);
+          (isSuperuser() || resource.data.createdBy == request.auth.uid);
       allow create: if isSignedIn() &&
           request.resource.data.createdBy == request.auth.uid &&
-          request.resource.data.status == 'pending';
-      allow update: if isAdmin();
+          request.resource.data.status == 'pending' &&
+          isValidOrganization(request.resource.data);
+      allow update: if isSuperuser() && isValidOrganization(request.resource.data);
       allow delete: if false;
     }
 
     match /news/{newsId} {
-      allow read: if resource.data.published == true || isAdmin();
-      allow create: if isAdmin() || (isOrgAdmin() &&
+      allow read: if resource.data.published == true ||
+          isSuperuser() ||
+          (isOrgAdmin() && resource.data.authorId == request.auth.uid);
+      allow create: if isSuperuser() || (isOrgAdmin() &&
           request.resource.data.organizationId == userData().organizationId &&
           request.resource.data.authorId == request.auth.uid &&
-          request.resource.data.published == false);
-      allow update, delete: if isAdmin();
+          request.resource.data.published == false &&
+          isValidNews(request.resource.data));
+      allow update: if isSuperuser() || (isOrgAdmin() &&
+          resource.data.authorId == request.auth.uid &&
+          resource.data.published == false &&
+          request.resource.data.published == false &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          isValidNews(request.resource.data));
+      allow delete: if isSuperuser() || (isOrgAdmin() &&
+          resource.data.authorId == request.auth.uid &&
+          resource.data.published == false);
     }
 
     match /reports/{reportId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isAdmin();
+      allow create: if isSignedIn() &&
+          isValidReport(request.resource.data);
+      allow read, update, delete: if isSuperuser();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isSuperuser();
+      allow create: if isSuperuser() &&
+          isValidAuditLog(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /draft_comments/{commentId} {
+      allow read: if isSuperuser() ||
+          (isOrgAdmin() &&
+              resource.data.organizationId == userData().organizationId);
+      allow create: if isSuperuser() &&
+          isValidDraftComment(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() &&
+          resource.data.userId == request.auth.uid;
+      allow create: if isSuperuser() &&
+          isValidNotification(request.resource.data);
+      allow update: if isSignedIn() &&
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.read == true &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['read']) &&
+          isValidNotification(request.resource.data);
+      allow delete: if false;
     }
   }
 }

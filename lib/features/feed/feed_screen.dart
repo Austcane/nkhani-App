@@ -4,6 +4,7 @@ import 'package:nkhani/features/auth/user_model.dart';
 import 'package:nkhani/features/auth/user_service.dart';
 import 'package:nkhani/features/feed/news_model.dart';
 import 'package:nkhani/features/feed/news_service.dart';
+import 'package:nkhani/features/feed/story_detail_screen.dart';
 import 'package:nkhani/features/reports/report_service.dart';
 
 class FeedScreen extends StatelessWidget {
@@ -122,34 +123,64 @@ class FeedScreen extends StatelessWidget {
 
                   return Card(
                     margin: const EdgeInsets.all(10),
-                    child: ListTile(
-                      title: Text(
-                        news.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            news.content,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (news.imageUrls.isNotEmpty)
+                          Image.network(
+                            news.imageUrls.first,
+                            width: double.infinity,
+                            height: 180,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const SizedBox(
+                              height: 180,
+                              child: Center(child: Icon(Icons.broken_image)),
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Author: ${news.authorId}',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ListTile(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StoryDetailScreen(news: news),
+                              ),
+                            );
+                          },
+                          title: Text(
+                            news.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        ],
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.flag_outlined),
-                        onPressed: () => _showReportDialog(
-                          context,
-                          newsId: news.id,
-                          reporterId: firebaseUser.uid,
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                news.summary?.isNotEmpty == true
+                                    ? news.summary!
+                                    : news.content,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Author: ${news.authorId}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.flag_outlined),
+                            onPressed: () => _showReportDialog(
+                              context,
+                              newsId: news.id,
+                              reporterId: firebaseUser.uid,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   );
                 },

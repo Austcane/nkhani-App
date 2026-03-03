@@ -39,14 +39,14 @@ class UserService {
     return doc.exists;
   }
 
-  Future<void> bootstrapAdmin(String uid) async {
+  Future<void> bootstrapSuperuser(String uid) async {
     final batch = FirebaseFirestore.instance.batch();
     final configRef = _config.doc('bootstrap');
     batch.set(configRef, {
-      'adminUid': uid,
+      'superuserUid': uid,
       'bootstrappedAt': FieldValue.serverTimestamp(),
     });
-    batch.update(_users.doc(uid), {'role': 'admin'});
+    batch.update(_users.doc(uid), {'role': 'superuser'});
     await batch.commit();
   }
 

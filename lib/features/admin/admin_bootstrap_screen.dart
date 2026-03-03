@@ -27,10 +27,10 @@ class _AdminBootstrapScreenState extends State<AdminBootstrapScreen> {
     setState(() => _isUpdating = true);
 
     try {
-      await _userService.bootstrapAdmin(user.uid);
+      await _userService.bootstrapSuperuser(user.uid);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You are now an admin.')),
+        const SnackBar(content: Text('You are now a superuser.')),
       );
       Navigator.of(context).pop();
     } catch (e) {
@@ -66,14 +66,14 @@ class _AdminBootstrapScreenState extends State<AdminBootstrapScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Make this account an admin',
+              'Make this account a superuser',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   done
                       ? 'Bootstrap already completed. Use the admin dashboard to manage roles.'
-                      : 'Use this once to promote your first admin account.',
+                      : 'Use this once to promote your first superuser account.',
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton.icon(
@@ -85,7 +85,7 @@ class _AdminBootstrapScreenState extends State<AdminBootstrapScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.admin_panel_settings),
-                  label: const Text('Make Me Admin'),
+                  label: const Text('Make Me Superuser'),
                 ),
               ],
             ),

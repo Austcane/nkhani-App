@@ -43,9 +43,16 @@ class AppUser {
     );
   }
 
-  bool get isAdmin => role == 'admin';
+  bool get isSuperuser => role == 'superuser';
 
   bool get isOrganizationAdmin => organizationRole == 'org_admin';
+
+  bool get isValidProfile {
+    if (name.trim().isEmpty) return false;
+    if (email.trim().isEmpty) return false;
+    if (role.trim().isEmpty) return false;
+    return true;
+  }
 
   bool get isTrialActive {
     if (trialEndsAt == null) return false;

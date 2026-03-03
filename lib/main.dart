@@ -102,7 +102,7 @@ class AuthWrapper extends StatelessWidget {
 
             final appUser = userSnapshot.data!;
 
-            if (appUser.role == 'admin') {
+            if (appUser.role == 'superuser') {
               return const AdminHomeScreen();
             }
 
