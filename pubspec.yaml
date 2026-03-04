@@ -37,6 +37,13 @@ dependencies:
   # Temporary directories for image processing
   path_provider: ^2.1.5
 
+  # Media
+  just_audio: ^0.9.36
+  audio_session: ^0.1.16
+  share_plus: ^7.2.1
+  video_player: ^2.8.2
+  chewie: ^1.7.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
