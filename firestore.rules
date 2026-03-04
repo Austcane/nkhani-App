@@ -48,6 +48,7 @@ service cloud.firestore {
       isBool(data.subscriptionActive) &&
       isTimestamp(data.trialEndsAt) &&
       isTimestamp(data.createdAt) &&
+      isNullOrString(data.photoUrl) &&
       isNullOrString(data.organizationId) &&
       isNullOrString(data.organizationRole);
     }
@@ -178,19 +179,9 @@ service cloud.firestore {
         (request.auth.uid == userId &&
             request.resource.data.role == resource.data.role &&
             request.resource.data.organizationRole == resource.data.organizationRole &&
-            request.resource.data.organizationId == resource.data.organizationId) ||
-        (request.auth.uid == userId &&
-            !exists(/databases/$(database)/documents/config/bootstrap) &&
-            request.resource.data.role == 'superuser')
+            request.resource.data.organizationId == resource.data.organizationId)
       ) && isValidUser(request.resource.data);
       allow delete: if false;
-    }
-
-    match /config/bootstrap {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() &&
-          !exists(/databases/$(database)/documents/config/bootstrap);
-      allow update, delete: if false;
     }
 
     match /organizations/{orgId} {

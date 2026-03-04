@@ -88,6 +88,30 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+      floatingActionButton: user == null
+          ? null
+          : StreamBuilder<AppUser?>(
+              stream: UserService().watchUser(user.uid),
+              builder: (context, snapshot) {
+                final appUser = snapshot.data;
+                if (appUser == null || !appUser.isOrganizationAdmin) {
+                  return const SizedBox.shrink();
+                }
+                return FloatingActionButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const OrganizationStorySubmitScreen(),
+                      ),
+                    );
+                  },
+                  tooltip: 'Open Org Studio',
+                  child: const Icon(Icons.post_add),
+                );
+              },
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: user == null
           ? const Center(child: Text('No user logged in'))
           : StreamBuilder<AppUser?>(
@@ -136,20 +160,6 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text('Organization ID: ${appUser.organizationId}'),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const OrganizationStorySubmitScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.post_add),
-                          label: const Text('Open Org Studio'),
-                        ),
                       ],
                     ],
                   ),

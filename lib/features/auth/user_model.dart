@@ -7,6 +7,7 @@ class AppUser {
   final String role;
   final bool subscriptionActive;
   final DateTime? trialEndsAt;
+  final String? photoUrl;
   final String? organizationId;
   final String? organizationRole;
 
@@ -17,6 +18,7 @@ class AppUser {
     required this.role,
     required this.subscriptionActive,
     required this.trialEndsAt,
+    this.photoUrl,
     this.organizationId,
     this.organizationRole,
   });
@@ -38,6 +40,7 @@ class AppUser {
       role: data['role'] ?? 'user',
       subscriptionActive: data['subscriptionActive'] ?? false,
       trialEndsAt: trialEndsAt,
+      photoUrl: data['photoUrl'],
       organizationId: data['organizationId'],
       organizationRole: data['organizationRole'],
     );

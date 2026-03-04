@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:nkhani/features/admin/admin_bootstrap_screen.dart';
 import 'package:nkhani/features/auth/user_model.dart';
 import 'package:nkhani/features/auth/user_service.dart';
 import 'package:nkhani/features/organizations/org_request_screen.dart';
 import 'package:nkhani/features/organizations/org_story_submit_screen.dart';
+import 'package:nkhani/features/profile/edit_profile_screen.dart';
 import 'package:nkhani/features/subscription/subscription_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -66,7 +66,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(
+        title: const Text('My Profile'),
+        centerTitle: true,
+      ),
       body: StreamBuilder<AppUser?>(
         stream: UserService().watchUser(user.uid),
         builder: (context, snapshot) {
@@ -80,86 +83,138 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           final appUser = snapshot.data!;
 
-          return Padding(
+          return ListView(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  appUser.name,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(appUser.email),
-                const SizedBox(height: 12),
-                Text(_statusText(appUser)),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: appUser.subscriptionActive || _isActivating
-                      ? null
-                      : () => _activateSubscription(user.uid),
-                  icon: _isActivating
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.payment),
-                  label: const Text('Activate Subscription (MWK 500)'),
-                ),
-                const SizedBox(height: 16),
-                if (!appUser.isSuperuser)
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminBootstrapScreen(),
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage: appUser.photoUrl?.isNotEmpty == true
+                            ? NetworkImage(appUser.photoUrl!)
+                            : null,
+                        child: appUser.photoUrl?.isNotEmpty == true
+                            ? null
+                            : Text(
+                                appUser.name.isNotEmpty
+                                    ? appUser.name
+                                        .substring(0, 1)
+                                        .toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                      Positioned(
+                        right: -6,
+                        bottom: -6,
+                        child: IconButton(
+                          icon: const Icon(Icons.edit, size: 18),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditProfileScreen(
+                                  user: appUser,
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.admin_panel_settings),
-                    label: const Text('Superuser Bootstrap'),
+                      ),
+                    ],
                   ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          appUser.name,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          appUser.email,
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _statusText(appUser),
+                          style: TextStyle(color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              ListTile(
+                leading: const Icon(Icons.subscriptions),
+                title: const Text('Subscription'),
+                subtitle: Text(_statusText(appUser)),
+                trailing: appUser.subscriptionActive
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : TextButton(
+                        onPressed: _isActivating
+                            ? null
+                            : () => _activateSubscription(user.uid),
+                        child: _isActivating
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Activate'),
+                      ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.business),
+                title: const Text('Request Organization'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const OrganizationRequestScreen(),
+                    ),
+                  );
+                },
+              ),
+              if (appUser.isOrganizationAdmin)
+                ListTile(
+                  leading: const Icon(Icons.post_add),
+                  title: const Text('Organization Studio'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const OrganizationRequestScreen(),
+                        builder: (_) =>
+                            const OrganizationStorySubmitScreen(),
                       ),
                     );
                   },
-                  icon: const Icon(Icons.business),
-                  label: const Text('Request Organization'),
                 ),
-                const SizedBox(height: 16),
-                if (appUser.isOrganizationAdmin)
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const OrganizationStorySubmitScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.post_add),
-                    label: const Text('Submit Org Story'),
-                  ),
-                if (appUser.isOrganizationAdmin) const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Logout'),
-                ),
-              ],
-            ),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.redAccent),
+                title: const Text('Log out'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _logout,
+              ),
+            ],
           );
         },
       ),

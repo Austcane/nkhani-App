@@ -70,6 +70,7 @@ class UserService {
       'subscriptionActive': false,
       'trialEndsAt': Timestamp.fromDate(trialEndsAt),
       'createdAt': FieldValue.serverTimestamp(),
+      'photoUrl': null,
     });
 
     final created = await docRef.get();
@@ -95,5 +96,26 @@ class UserService {
     required String? organizationRole,
   }) async {
     await _users.doc(uid).update({'organizationRole': organizationRole});
+  }
+
+  Future<void> updateUserName({
+    required String uid,
+    required String name,
+  }) async {
+    await _users.doc(uid).update({'name': name});
+  }
+
+  Future<void> updateUserEmail({
+    required String uid,
+    required String email,
+  }) async {
+    await _users.doc(uid).update({'email': email});
+  }
+
+  Future<void> updateUserPhoto({
+    required String uid,
+    required String? photoUrl,
+  }) async {
+    await _users.doc(uid).update({'photoUrl': photoUrl});
   }
 }
