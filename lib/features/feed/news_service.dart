@@ -95,6 +95,20 @@ class NewsService {
     });
   }
 
+  Stream<List<News>> getPublishedNewsByOrganization(String organizationId) {
+    return _newsRef
+        .where('published', isEqualTo: true)
+        .where('organizationId', isEqualTo: organizationId)
+        .snapshots()
+        .map((snapshot) {
+      final items = snapshot.docs
+          .map((doc) => News.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+      items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return items;
+    });
+  }
+
   Future<News?> getNewsById(String newsId) async {
     final doc = await _newsRef.doc(newsId).get();
     if (!doc.exists || doc.data() == null) return null;

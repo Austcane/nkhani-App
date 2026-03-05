@@ -8,6 +8,9 @@ import 'package:nkhani/features/feed/news_service.dart';
 import 'package:nkhani/features/feed/story_detail_screen.dart';
 import 'package:nkhani/features/home/news_search_delegate.dart';
 import 'package:nkhani/features/notifications/notification_screen.dart';
+import 'package:nkhani/features/organizations/media_profile_screen.dart';
+import 'package:nkhani/features/organizations/org_model.dart';
+import 'package:nkhani/features/organizations/org_service.dart';
 import 'package:nkhani/features/organizations/org_story_submit_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,10 +27,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = 'All';
   bool _imagesOnly = false;
   bool _sortNewest = true;
-
-  Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
-  }
 
   void _openSearch() {
     showSearch(
@@ -182,29 +181,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 const Spacer(),
                                 IconButton(
-                                  icon: const Icon(Icons.search, color: Colors.white),
-                                  onPressed: _openSearch,
-                                ),
-                                Container(
-                                  decoration: BoxDecoration(
+                                  icon: const Icon(
+                                    Icons.notifications,
                                     color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.15),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
                                   ),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.notifications, color: _brand),
-                                    onPressed: _openNotifications,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.logout, color: Colors.white),
-                                  onPressed: _logout,
+                                  onPressed: _openNotifications,
                                 ),
                               ],
                             ),
@@ -223,6 +204,43 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: TextStyle(color: Colors.white70),
                             ),
                             const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: _openSearch,
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.search,
+                                            color: Colors.grey.shade500,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Search stories',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
                           ],
                         ),
                       ),
@@ -266,8 +284,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         }
 
-                        final heroStory = filtered.first;
-                        final remaining = filtered.skip(1).toList();
+                        final heroStory = filtered.reduce((current, candidate) {
+                          return candidate.createdAt.isAfter(current.createdAt)
+                              ? candidate
+                              : current;
+                        });
+                        final remaining = filtered
+                            .where((item) => item.id != heroStory.id)
+                            .toList();
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,6 +310,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 },
                               ),
                             ),
+                            const SizedBox(height: 18),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: Text(
+                                'Media',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _MediaStrip(),
                             const SizedBox(height: 18),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -341,6 +378,104 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _MediaStrip extends StatelessWidget {
+  const _MediaStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 120,
+      child: StreamBuilder<List<Organization>>(
+        stream: OrganizationService().watchOrganizationsByStatus('approved'),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('No media profiles yet.'),
+              ),
+            );
+          }
+
+          final orgs = snapshot.data!;
+
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: orgs.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final org = orgs[index];
+              return _MediaCard(organization: org);
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MediaCard extends StatelessWidget {
+  final Organization organization;
+
+  const _MediaCard({required this.organization});
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'M';
+    final first = parts.first[0];
+    final second = parts.length > 1 ? parts[1][0] : '';
+    return (first + second).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MediaProfileScreen(organization: organization),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        width: 88,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: const Color(0xFFF4E8F2),
+              child: Text(
+                _initials(organization.name),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF8B1D76),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              organization.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     );
   }

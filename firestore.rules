@@ -168,6 +168,11 @@ service cloud.firestore {
       isTimestamp(data.createdAt);
     }
 
+    function isValidBookmark(data) {
+      return hasKeys(data, ['newsId']) &&
+      isString(data.newsId);
+    }
+
     function isSuperuser() {
       return isSignedIn() && userData().role == 'superuser';
     }
@@ -194,9 +199,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /users/{userId}/bookmarks/{newsId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() &&
+          request.auth.uid == userId &&
+          isValidBookmark(request.resource.data);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+      allow update: if false;
+    }
+
     match /organizations/{orgId} {
       allow read: if isSignedIn() &&
-          (isSuperuser() || resource.data.createdBy == request.auth.uid);
+          (isSuperuser() ||
+           resource.data.createdBy == request.auth.uid ||
+           resource.data.status == 'approved');
       allow create: if isSignedIn() &&
           request.resource.data.createdBy == request.auth.uid &&
           request.resource.data.status == 'pending' &&

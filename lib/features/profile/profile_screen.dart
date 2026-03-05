@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nkhani/features/auth/user_model.dart';
 import 'package:nkhani/features/auth/user_service.dart';
+import 'package:nkhani/features/bookmarks/saved_stories_screen.dart';
 import 'package:nkhani/features/home/admin_home_screen.dart';
 import 'package:nkhani/features/organizations/org_request_screen.dart';
 import 'package:nkhani/features/organizations/org_story_submit_screen.dart';
@@ -204,6 +205,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => const OrganizationRequestScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.bookmark),
+                title: const Text('Saved Stories'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SavedStoriesScreen(),
                     ),
                   );
                 },
