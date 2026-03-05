@@ -7,6 +7,7 @@ import 'package:nkhani/features/home/admin_home_screen.dart';
 import 'package:nkhani/features/organizations/org_request_screen.dart';
 import 'package:nkhani/features/organizations/org_story_submit_screen.dart';
 import 'package:nkhani/features/profile/edit_profile_screen.dart';
+import 'package:nkhani/features/profile/settings_screen.dart';
 import 'package:nkhani/features/subscription/subscription_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -19,6 +20,15 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final SubscriptionService _subscriptionService = SubscriptionService();
   bool _isActivating = false;
+
+  final LinearGradient _purpleGradient = const LinearGradient(
+    colors: [
+      Color(0xFF7B1FA2),
+      Color(0xFF9C27B0),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
@@ -68,105 +78,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Profile'),
-        centerTitle: true,
-      ),
       body: StreamBuilder<AppUser?>(
         stream: UserService().watchUser(user.uid),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('User profile not found.'));
           }
 
           final appUser = snapshot.data!;
 
-          return ListView(
-            padding: const EdgeInsets.all(20),
+          return Column(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: Colors.grey.shade200,
-                        backgroundImage: appUser.photoUrl?.isNotEmpty == true
-                            ? NetworkImage(appUser.photoUrl!)
-                            : null,
-                        child: appUser.photoUrl?.isNotEmpty == true
-                            ? null
-                            : Text(
-                                appUser.name.isNotEmpty
-                                    ? appUser.name
-                                        .substring(0, 1)
-                                        .toUpperCase()
-                                    : 'U',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                      Positioned(
-                        right: -6,
-                        bottom: -6,
-                        child: IconButton(
-                          icon: const Icon(Icons.edit, size: 18),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => EditProfileScreen(
-                                  user: appUser,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+              // 🔥 Gradient Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.only(
+                    top: 60, left: 20, right: 20, bottom: 30),
+                decoration: BoxDecoration(
+                  gradient: _purpleGradient,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appUser.name,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                          ),
+                ),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 45,
+                      backgroundColor: Colors.white,
+                      backgroundImage: appUser.photoUrl?.isNotEmpty == true
+                          ? NetworkImage(appUser.photoUrl!)
+                          : null,
+                      child: appUser.photoUrl?.isNotEmpty == true
+                          ? null
+                          : Text(
+                        appUser.name.isNotEmpty
+                            ? appUser.name[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          appUser.email,
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _statusText(appUser),
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Text(
+                      appUser.name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      appUser.email,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              ListTile(
-                leading: const Icon(Icons.subscriptions),
-                title: const Text('Subscription'),
-                subtitle: Text(_statusText(appUser)),
-                trailing: appUser.subscriptionActive
-                    ? const Icon(Icons.check_circle, color: Colors.green)
-                    : TextButton(
+
+              // 🔥 Content Section
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    _buildCardTile(
+                      icon: Icons.edit,
+                      title: 'Edit Profile',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                EditProfileScreen(user: appUser),
+                          ),
+                        );
+                      },
+                    ),
+
+                    _buildCardTile(
+                      icon: Icons.settings,
+                      title: 'Settings',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsPage(),
+                          ),
+                        );
+                      },
+                    ),
+
+                    _buildCardTile(
+                      icon: Icons.subscriptions,
+                      title: 'Subscription',
+                      subtitle: _statusText(appUser),
+                      trailing: appUser.subscriptionActive
+                          ? const Icon(Icons.check_circle,
+                          color: Colors.green)
+                          : TextButton(
                         onPressed: _isActivating
                             ? null
                             : () => _activateSubscription(user.uid),
@@ -182,20 +195,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
               ),
               const Divider(),
-              if (appUser.isSuperuser)
-                ListTile(
-                  leading: const Icon(Icons.admin_panel_settings),
-                  title: const Text('Admin Dashboard'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AdminHomeScreen(),
-                      ),
-                    );
-                  },
-                ),
               ListTile(
                 leading: const Icon(Icons.business),
                 title: const Text('Request Organization'),
@@ -209,20 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.bookmark),
-                title: const Text('Saved Stories'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SavedStoriesScreen(),
-                    ),
-                  );
-                },
-              ),
-              if (appUser.isSuperuser || appUser.isOrganizationAdmin)
+              if (appUser.isOrganizationAdmin)
                 ListTile(
                   leading: const Icon(Icons.post_add),
                   title: const Text('Organization Studio'),
@@ -246,6 +232,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCardTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Color iconColor = Colors.deepPurple,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: iconColor),
+        title: Text(title),
+        subtitle: subtitle != null ? Text(subtitle) : null,
+        trailing: trailing ?? const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }
