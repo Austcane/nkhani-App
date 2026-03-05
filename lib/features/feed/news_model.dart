@@ -8,6 +8,7 @@ class News {
   final List<String> imageUrls;
   final String authorId;
   final String? organizationId;
+  final String category;
   final DateTime createdAt;
   final bool published;
 
@@ -19,6 +20,7 @@ class News {
     required this.imageUrls,
     required this.authorId,
     this.organizationId,
+    required this.category,
     required this.createdAt,
     required this.published,
   });
@@ -40,6 +42,7 @@ class News {
           [],
       authorId: data['authorId'] ?? '',
       organizationId: data['organizationId'],
+      category: data['category'] ?? 'News',
       createdAt: createdAt,
       published: data['published'] ?? true,
     );
@@ -53,6 +56,7 @@ class News {
       'imageUrls': imageUrls,
       'authorId': authorId,
       'organizationId': organizationId,
+      'category': category,
       'createdAt': Timestamp.fromDate(createdAt),
       'published': published,
     };
@@ -62,6 +66,17 @@ class News {
     if (title.trim().isEmpty) return false;
     if (content.trim().isEmpty) return false;
     if (authorId.trim().isEmpty) return false;
+    if (category.trim().isEmpty) return false;
     return true;
   }
+
+  static const List<String> categories = [
+    'News',
+    'Politics',
+    'Sports',
+    'Entertainment',
+    'Business',
+    'Technology',
+    'World',
+  ];
 }

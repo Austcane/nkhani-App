@@ -14,11 +14,11 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    RadioScreen(),
-    LiveTvScreen(),
-    ProfileScreen(),
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const RadioScreen(),
+    const LiveTvScreen(),
+    const ProfileScreen(),
   ];
 
   @override

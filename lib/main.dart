@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:nkhani/features/auth/login_screen.dart';
 import 'package:nkhani/features/auth/splash_screen.dart';
 import 'package:nkhani/features/auth/user_service.dart';
-import 'package:nkhani/features/home/admin_home_screen.dart';
 import 'package:nkhani/navigation/main_navigation.dart';
 
 void main() async {
@@ -16,16 +15,30 @@ void main() async {
 class NkhaniApp extends StatelessWidget {
   const NkhaniApp({super.key});
 
+  static const Color _primary = Color(0xFF8B1D76);
+  static const Color _secondary = Color(0xFFF4E848);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Nkhani',
       theme: ThemeData(
-        primaryColor: const Color(0xFF8A1E78),
+        primaryColor: _primary,
         colorScheme: const ColorScheme.light(
-          primary: Color(0xFF8A1E78),
-          secondary: Color(0xFFF8F148),
+          primary: _primary,
+          secondary: _secondary,
+          surface: Colors.white,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: _primary,
+          foregroundColor: Colors.white,
+          iconTheme: IconThemeData(color: Colors.white),
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       home: const AuthWrapper(),
@@ -120,12 +133,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   child: Text('User profile not found. Please retry.'),
                 ),
               );
-            }
-
-            final appUser = userSnapshot.data!;
-
-            if (appUser.role == 'superuser') {
-              return const AdminHomeScreen();
             }
 
             return const MainNavigation();

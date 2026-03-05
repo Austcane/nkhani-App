@@ -11,6 +11,7 @@ import 'package:nkhani/features/feed/news_service.dart';
 import 'package:nkhani/features/notifications/notification_service.dart';
 import 'package:nkhani/features/organizations/org_model.dart';
 import 'package:nkhani/features/organizations/org_service.dart';
+import 'package:nkhani/features/organizations/org_story_submit_screen.dart';
 import 'package:nkhani/features/reports/report_model.dart';
 import 'package:nkhani/features/reports/report_service.dart';
 
@@ -32,6 +33,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   final _draftCommentService = DraftCommentService();
   final _notificationService = NotificationService();
   bool _isSubmitting = false;
+  String _selectedCategory = News.categories.first;
 
   User? get _currentUser => FirebaseAuth.instance.currentUser;
 
@@ -60,6 +62,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         title: title,
         content: content,
         authorId: user.uid,
+        category: _selectedCategory,
       );
 
       _titleController.clear();
@@ -83,7 +86,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   Future<void> _togglePublished(News news, bool value) async {
     try {
-      await _newsService.setPublished(newsId: news.id, published: value);
+      await _newsService.setPublished(
+        newsId: news.id,
+        published: value,
+        title: news.title,
+        category: news.category,
+      );
       await _auditService.logAction(
         action: value ? 'publish_story' : 'unpublish_story',
         actorId: _currentUser?.uid ?? '',
@@ -140,7 +148,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   Future<void> _unpublishStory(String newsId) async {
     try {
-      await _newsService.setPublished(newsId: newsId, published: false);
+      final news = await _newsService.getNewsById(newsId);
+      await _newsService.setPublished(
+        newsId: newsId,
+        published: false,
+        title: news?.title,
+        category: news?.category,
+      );
       await _auditService.logAction(
         action: 'unpublish_story',
         actorId: _currentUser?.uid ?? '',
@@ -329,6 +343,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         title: const Text('Admin Dashboard'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.post_add),
+            tooltip: 'Open Org Studio',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const OrganizationStorySubmitScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
           ),
@@ -350,6 +376,24 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 labelText: 'Title',
                 border: OutlineInputBorder(),
               ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              decoration: const InputDecoration(
+                labelText: 'Category',
+                border: OutlineInputBorder(),
+              ),
+              items: News.categories
+                  .map((category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(category),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _selectedCategory = value);
+              },
             ),
             const SizedBox(height: 8),
             TextField(

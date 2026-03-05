@@ -1,483 +1,774 @@
-import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nkhani/features/auth/user_model.dart';
 import 'package:nkhani/features/auth/user_service.dart';
+import 'package:nkhani/features/auth/widgets/app_colors.dart';
 import 'package:nkhani/features/feed/news_model.dart';
 import 'package:nkhani/features/feed/news_service.dart';
 import 'package:nkhani/features/feed/story_detail_screen.dart';
+import 'package:nkhani/features/home/news_search_delegate.dart';
 import 'package:nkhani/features/notifications/notification_screen.dart';
-import 'package:nkhani/features/notifications/notification_service.dart';
 import 'package:nkhani/features/organizations/org_story_submit_screen.dart';
-import 'package:nkhani/features/reports/report_service.dart';
-import 'package:share_plus/share_plus.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  static const Color _brand = AppColors.primary;
+  static const Color _surface = Color(0xFFF5F6FA);
+
+  String _selectedCategory = 'All';
+  bool _imagesOnly = false;
+  bool _sortNewest = true;
 
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF8B1D76),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF8B1D76),
-        elevation: 0,
-        title: const Text(
-          'Nkhani',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-          StreamBuilder<int>(
-            stream: NotificationService().watchUnreadCount(user?.uid ?? ''),
-            builder: (context, snapshot) {
-              final unread = snapshot.data ?? 0;
-              return IconButton(
-                onPressed: user == null
-                    ? null
-                    : () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NotificationScreen(),
-                          ),
-                        );
-                      },
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.notifications_none),
-                    if (unread > 0)
-                      Positioned(
-                        right: -6,
-                        top: -6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            unread.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                tooltip: 'Notifications',
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Logout',
-          ),
-        ],
-      ),
-      floatingActionButton: user == null
-          ? null
-          : StreamBuilder<AppUser?>(
-              stream: UserService().watchUser(user.uid),
-              builder: (context, snapshot) {
-                final appUser = snapshot.data;
-                if (appUser == null || !appUser.isOrganizationAdmin) {
-                  return const SizedBox.shrink();
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 90),
-                  child: FloatingActionButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const OrganizationStorySubmitScreen(),
-                        ),
-                      );
-                    },
-                    tooltip: 'Open Org Studio',
-                    child: const Icon(Icons.post_add),
-                  ),
-                );
-              },
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFF0F2F5),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: user == null
-            ? const Center(child: Text('No user logged in'))
-            : StreamBuilder<AppUser?>(
-                stream: UserService().watchUser(user.uid),
-                builder: (context, userSnapshot) {
-                  if (userSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (!userSnapshot.hasData || userSnapshot.data == null) {
-                    return const Center(child: Text('User profile not found.'));
-                  }
-
-                  final appUser = userSnapshot.data!;
-
-                  if (!appUser.hasAccess) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text(
-                          'Your free trial has ended. Activate subscription (MWK 500) from Profile to continue reading.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  }
-
-                  return StreamBuilder<List<News>>(
-                    stream: NewsService().getNewsFeed(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
-                      }
-
-                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Center(child: Text('No news yet'));
-                      }
-
-                      final newsList = snapshot.data!;
-
-                      return ListView.separated(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        itemCount: newsList.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          return _NewsPostCard(
-                            news: newsList[index],
-                            reporterId: user.uid,
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-      ),
-    );
-  }
-}
-
-class _NewsPostCard extends StatefulWidget {
-  final News news;
-  final String reporterId;
-
-  const _NewsPostCard({
-    required this.news,
-    required this.reporterId,
-  });
-
-  @override
-  State<_NewsPostCard> createState() => _NewsPostCardState();
-}
-
-class _NewsPostCardState extends State<_NewsPostCard>
-    with SingleTickerProviderStateMixin {
-  bool _isLiked = false;
-  bool _isExpanded = false;
-  bool _showHeart = false;
-
-  int _likeCount = 9700;
-  int _shareCount = 235;
-
-  late final AnimationController _heartController;
-  late final Animation<double> _heartAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _heartController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _heartAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _heartController, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _heartController.dispose();
-    super.dispose();
-  }
-
-  String _formatNumber(int number) {
-    if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}K';
-    }
-    return number.toString();
-  }
-
-  String _timeAgo(DateTime date) {
-    final diff = DateTime.now().difference(date);
-    if (diff.inDays >= 1) {
-      return '${diff.inDays}d';
-    }
-    if (diff.inHours >= 1) {
-      return '${diff.inHours}h';
-    }
-    if (diff.inMinutes >= 1) {
-      return '${diff.inMinutes}m';
-    }
-    return 'now';
-  }
-
-  void _toggleLike() {
-    setState(() {
-      _isLiked = !_isLiked;
-      _likeCount += _isLiked ? 1 : -1;
-      _showHeart = true;
-    });
-
-    _heartController.forward(from: 0);
-
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) {
-        setState(() => _showHeart = false);
-      }
-    });
-  }
-
-  Future<void> _showReportDialog() async {
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
+  void _openSearch() {
+    showSearch(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Report Story'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Reason (optional)',
+      delegate: NewsSearchDelegate(),
+    );
+  }
+
+  void _openNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationScreen()),
+    );
+  }
+
+  void _openOrgStudio() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const OrganizationStorySubmitScreen(),
+      ),
+    );
+  }
+
+  Future<void> _openFilterSheet() async {
+    final result = await showModalBottomSheet<_FeedFilter>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+            child: _FilterSheet(
+              selectedCategory: _selectedCategory,
+              imagesOnly: _imagesOnly,
+              sortNewest: _sortNewest,
             ),
-            maxLines: 3,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, controller.text.trim()),
-              child: const Text('Report'),
-            ),
-          ],
         );
       },
     );
 
-    final reason =
-        (result == null || result.isEmpty) ? 'No reason provided' : result;
+    if (result == null) return;
 
-    try {
-      await ReportService().createReport(
-        newsId: widget.news.id,
-        reporterId: widget.reporterId,
-        reason: reason,
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Report submitted.')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Report failed: $e')),
-      );
-    }
+    setState(() {
+      _selectedCategory = result.category;
+      _imagesOnly = result.imagesOnly;
+      _sortNewest = result.sortNewest;
+    });
   }
 
-  void _openShareSheet() {
-    Share.share(
-      '${widget.news.title}\n\n${widget.news.summary ?? ''}',
-    );
-    setState(() => _shareCount += 1);
+  Stream<List<News>> _newsStream() {
+    if (_selectedCategory == 'All') {
+      return NewsService().getNewsFeed();
+    }
+    return NewsService().getNewsFeedByCategory(_selectedCategory);
+  }
+
+  List<News> _applyLocalFilters(List<News> items) {
+    var filtered = items;
+    if (_imagesOnly) {
+      filtered = filtered.where((item) => item.imageUrls.isNotEmpty).toList();
+    }
+    filtered.sort((a, b) => _sortNewest
+        ? b.createdAt.compareTo(a.createdAt)
+        : a.createdAt.compareTo(b.createdAt));
+    return filtered;
   }
 
   @override
   Widget build(BuildContext context) {
-    final news = widget.news;
-    final previewText =
-        news.summary?.isNotEmpty == true ? news.summary! : news.content;
+    final firebaseUser = FirebaseAuth.instance.currentUser;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Color(0xFF8B1D76),
-                  child: Icon(Icons.newspaper, color: Colors.white),
+    if (firebaseUser == null) {
+      return const Scaffold(
+        body: Center(child: Text('Please login to continue.')),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: _surface,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      body: StreamBuilder<AppUser?>(
+        stream: UserService().watchUser(firebaseUser.uid),
+        builder: (context, userSnapshot) {
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!userSnapshot.hasData || userSnapshot.data == null) {
+            return const Center(child: Text('User profile not found.'));
+          }
+
+          final appUser = userSnapshot.data!;
+
+          if (!appUser.hasAccess) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text(
+                  'Your free trial has ended. Activate subscription from Profile to continue reading.',
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        news.organizationId ?? 'Timveni News',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            );
+          }
+
+          return Stack(
+            children: [
+              CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF8B1D76),
+                            Color(0xFFB42586),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(28),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 20,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${_timeAgo(news.createdAt)} · 🌍',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
+                      child: SafeArea(
+                        bottom: false,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Nkhani',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  icon: const Icon(Icons.search, color: Colors.white),
+                                  onPressed: _openSearch,
+                                ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.15),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.notifications, color: _brand),
+                                    onPressed: _openNotifications,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.logout, color: Colors.white),
+                                  onPressed: _logout,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              'Hello ${appUser.name}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Catch up on the latest stories',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: 'report',
-                      child: Text('Report Post'),
-                    ),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'report') {
-                      _showReportDialog();
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () => setState(() => _isExpanded = !_isExpanded),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                previewText,
-                maxLines: _isExpanded ? null : 3,
-                overflow:
-                    _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (news.imageUrls.isNotEmpty)
-            GestureDetector(
-              onDoubleTap: _toggleLike,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => StoryDetailScreen(news: news),
-                  ),
-                );
-              },
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Image.network(
-                    news.imageUrls.first,
-                    width: double.infinity,
-                    height: 250,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const SizedBox(
-                      height: 250,
-                      child: Center(child: Icon(Icons.broken_image)),
                     ),
                   ),
-                  if (_showHeart)
-                    ScaleTransition(
-                      scale: _heartAnimation,
-                      child: const Icon(
-                        Icons.favorite,
-                        color: Colors.white,
-                        size: 90,
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                      child: _CategoryRow(
+                        selectedCategory: _selectedCategory,
+                        onCategorySelected: (value) {
+                          setState(() => _selectedCategory = value);
+                        },
+                        onOpenFilter: _openFilterSheet,
                       ),
                     ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: StreamBuilder<List<News>>(
+                      stream: _newsStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.only(top: 40),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.only(top: 40),
+                            child: Center(child: Text('No stories yet.')),
+                          );
+                        }
+
+                        final filtered = _applyLocalFilters(snapshot.data!);
+                        if (filtered.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.only(top: 40),
+                            child: Center(child: Text('No stories match this filter.')),
+                          );
+                        }
+
+                        final heroStory = filtered.first;
+                        final remaining = filtered.skip(1).toList();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: _HeroStoryCard(
+                                news: heroStory,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => StoryDetailScreen(news: heroStory),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Text(
+                                'Latest',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade900,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              itemBuilder: (context, index) {
+                                final news = remaining[index];
+                                return _NewsListCard(
+                                  news: news,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => StoryDetailScreen(news: news),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              separatorBuilder: (_, __) => const SizedBox(height: 12),
+                              itemCount: remaining.length,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 140)),
                 ],
               ),
-            ),
-          if (news.imageUrls.isEmpty)
-            const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+              if (appUser.isSuperuser || appUser.isOrganizationAdmin)
+                Positioned(
+                  right: 20,
+                  bottom: 110,
+                  child: FloatingActionButton(
+                    backgroundColor: _brand,
+                    onPressed: _openOrgStudio,
+                    child: const Icon(Icons.post_add, color: Colors.white),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CategoryRow extends StatelessWidget {
+  final String selectedCategory;
+  final ValueChanged<String> onCategorySelected;
+  final VoidCallback onOpenFilter;
+
+  const _CategoryRow({
+    required this.selectedCategory,
+    required this.onCategorySelected,
+    required this.onOpenFilter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = ['All', ...News.categories, 'More'];
+
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             child: Row(
-              children: [
-                const Icon(Icons.thumb_up, size: 16, color: Colors.blue),
-                const SizedBox(width: 5),
-                Text(_formatNumber(_likeCount)),
-                const Spacer(),
-                Text('${_formatNumber(_shareCount)} shares'),
-              ],
+              children: categories.map((category) {
+                final isSelected = category == selectedCategory;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (category == 'More') {
+                        onOpenFilter();
+                        return;
+                      }
+                      onCategorySelected(category);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            category,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87,
+                              fontWeight:
+                                  isSelected ? FontWeight.w600 : FontWeight.w500,
+                            ),
+                          ),
+                          if (category == 'More')
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(Icons.tune, size: 14),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
-          const Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              TextButton.icon(
-                onPressed: _toggleLike,
-                icon: Icon(
-                  _isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                  color: _isLiked ? Colors.blue : Colors.grey,
+        ),
+        const SizedBox(width: 10),
+        InkWell(
+          onTap: onOpenFilter,
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                label: Text(
-                  'Like',
-                  style: TextStyle(
-                    color: _isLiked ? Colors.blue : Colors.grey,
+              ],
+            ),
+            child: const Icon(Icons.filter_alt, size: 18),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroStoryCard extends StatelessWidget {
+  final News news;
+  final VoidCallback onTap;
+
+  const _HeroStoryCard({
+    required this.news,
+    required this.onTap,
+  });
+
+  String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays >= 1) return '${diff.inDays}d ago';
+    if (diff.inHours >= 1) return '${diff.inHours}h ago';
+    if (diff.inMinutes >= 1) return '${diff.inMinutes}m ago';
+    return 'just now';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = news.imageUrls.isNotEmpty ? news.imageUrls.first : null;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 220,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: Stack(
+            children: [
+              if (image != null)
+                Image.network(
+                  image,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey.shade300,
+                    child: const Center(child: Icon(Icons.broken_image)),
+                  ),
+                )
+              else
+                Container(
+                  color: Colors.grey.shade300,
+                  child: const Center(child: Icon(Icons.image_not_supported)),
+                ),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withOpacity(0.7),
+                      Colors.transparent,
+                    ],
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
                   ),
                 ),
               ),
-              TextButton.icon(
-                onPressed: _openShareSheet,
-                icon: const Icon(Icons.share_outlined, color: Colors.grey),
-                label: const Text(
-                  'Share',
-                  style: TextStyle(color: Colors.grey),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 18,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        news.category,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      news.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _timeAgo(news.createdAt),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+class _NewsListCard extends StatelessWidget {
+  final News news;
+  final VoidCallback onTap;
+
+  const _NewsListCard({
+    required this.news,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final image = news.imageUrls.isNotEmpty ? news.imageUrls.first : null;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: 84,
+                height: 84,
+                child: image == null
+                    ? Container(
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.image_not_supported),
+                      )
+                    : Image.network(
+                        image,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.broken_image),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    news.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    news.summary?.isNotEmpty == true
+                        ? news.summary!
+                        : news.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.timer, size: 12, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Text(
+                        news.category,
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedFilter {
+  final String category;
+  final bool imagesOnly;
+  final bool sortNewest;
+
+  const _FeedFilter({
+    required this.category,
+    required this.imagesOnly,
+    required this.sortNewest,
+  });
+}
+
+class _FilterSheet extends StatefulWidget {
+  final String selectedCategory;
+  final bool imagesOnly;
+  final bool sortNewest;
+
+  const _FilterSheet({
+    required this.selectedCategory,
+    required this.imagesOnly,
+    required this.sortNewest,
+  });
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  late String _category;
+  late bool _imagesOnly;
+  late bool _sortNewest;
+
+  @override
+  void initState() {
+    super.initState();
+    _category = widget.selectedCategory;
+    _imagesOnly = widget.imagesOnly;
+    _sortNewest = widget.sortNewest;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Filter stories',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text('Category'),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            'All',
+            ...News.categories,
+          ].map((category) {
+            final isSelected = category == _category;
+            return ChoiceChip(
+              label: Text(category),
+              selected: isSelected,
+              onSelected: (_) => setState(() => _category = category),
+              selectedColor: AppColors.primary,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        SwitchListTile(
+          value: _imagesOnly,
+          onChanged: (value) => setState(() => _imagesOnly = value),
+          title: const Text('Images only'),
+        ),
+        SwitchListTile(
+          value: _sortNewest,
+          onChanged: (value) => setState(() => _sortNewest = value),
+          title: const Text('Newest first'),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.pop(
+                context,
+                _FeedFilter(
+                  category: _category,
+                  imagesOnly: _imagesOnly,
+                  sortNewest: _sortNewest,
+                ),
+              );
+            },
+            child: const Text('Apply filters'),
+          ),
+        ),
+      ],
     );
   }
 }

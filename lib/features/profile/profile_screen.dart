@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nkhani/features/auth/user_model.dart';
 import 'package:nkhani/features/auth/user_service.dart';
+import 'package:nkhani/features/home/admin_home_screen.dart';
 import 'package:nkhani/features/organizations/org_request_screen.dart';
 import 'package:nkhani/features/organizations/org_story_submit_screen.dart';
 import 'package:nkhani/features/profile/edit_profile_screen.dart';
@@ -180,6 +181,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
               ),
               const Divider(),
+              if (appUser.isSuperuser)
+                ListTile(
+                  leading: const Icon(Icons.admin_panel_settings),
+                  title: const Text('Admin Dashboard'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminHomeScreen(),
+                      ),
+                    );
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.business),
                 title: const Text('Request Organization'),
@@ -193,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 },
               ),
-              if (appUser.isOrganizationAdmin)
+              if (appUser.isSuperuser || appUser.isOrganizationAdmin)
                 ListTile(
                   leading: const Icon(Icons.post_add),
                   title: const Text('Organization Studio'),

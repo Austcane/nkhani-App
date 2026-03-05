@@ -31,6 +31,7 @@ class _OrganizationStorySubmitScreenState
   final _commentService = DraftCommentService();
   final _imagePicker = ImagePicker();
   bool _isSubmitting = false;
+  String _selectedCategory = News.categories.first;
   final List<File> _selectedImages = [];
   double _uploadProgress = 0;
   UploadTask? _currentUploadTask;
@@ -141,6 +142,7 @@ class _OrganizationStorySubmitScreenState
         imageUrls: imageUrls,
         authorId: appUser.uid,
         organizationId: appUser.organizationId,
+        category: _selectedCategory,
       );
 
       _titleController.clear();
@@ -341,7 +343,9 @@ class _OrganizationStorySubmitScreenState
 
           final appUser = snapshot.data!;
 
-          if (!appUser.isOrganizationAdmin || appUser.organizationId == null) {
+          if (!appUser.isSuperuser &&
+              (!appUser.isOrganizationAdmin ||
+                  appUser.organizationId == null)) {
             return const Center(
               child: Text('Organization admin access required.'),
             );
@@ -371,6 +375,24 @@ class _OrganizationStorySubmitScreenState
                     labelText: 'Summary (optional)',
                     border: OutlineInputBorder(),
                   ),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: News.categories
+                      .map((category) => DropdownMenuItem(
+                            value: category,
+                            child: Text(category),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _selectedCategory = value);
+                  },
                 ),
                 const SizedBox(height: 8),
                 TextField(
