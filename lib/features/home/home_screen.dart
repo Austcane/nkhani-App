@@ -100,17 +100,21 @@ class HomeScreen extends StatelessWidget {
                 if (appUser == null || !appUser.isOrganizationAdmin) {
                   return const SizedBox.shrink();
                 }
-                return FloatingActionButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const OrganizationStorySubmitScreen(),
-                      ),
-                    );
-                  },
-                  tooltip: 'Open Org Studio',
-                  child: const Icon(Icons.post_add),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 90),
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const OrganizationStorySubmitScreen(),
+                        ),
+                      );
+                    },
+                    tooltip: 'Open Org Studio',
+                    child: const Icon(Icons.post_add),
+                  ),
                 );
               },
             ),
