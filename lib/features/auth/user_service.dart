@@ -27,6 +27,11 @@ class UserService {
     });
   }
 
+  Future<List<String>> getSuperuserIds() async {
+    final snapshot = await _users.where('role', isEqualTo: 'superuser').get();
+    return snapshot.docs.map((doc) => doc.id).toList();
+  }
+
   Future<void> updateUserRole({
     required String uid,
     required String role,

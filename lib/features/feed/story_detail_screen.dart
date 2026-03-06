@@ -212,8 +212,8 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                             Row(
                               children: [
                                 if (userId == null)
-                                  IconButton(
-                                    icon: const Icon(Icons.bookmark_border),
+                                  const IconButton(
+                                    icon: Icon(Icons.bookmark_border),
                                     color: Colors.white,
                                     onPressed: null,
                                   )
@@ -308,10 +308,10 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          Row(
+                          const Row(
                             children: [
                               _MetricPill(icon: Icons.thumb_up, label: '2.5k'),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               _MetricPill(icon: Icons.chat_bubble, label: '540'),
                             ],
                           ),
@@ -351,9 +351,9 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     backgroundColor: _brand,
-                    child: const Icon(Icons.newspaper, color: Colors.white),
+                    child: Icon(Icons.newspaper, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

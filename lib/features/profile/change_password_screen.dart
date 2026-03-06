@@ -1,132 +1,212 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:nkhani/features/auth/widgets/app_colors.dart';
 
-class ChangePasswordPage extends StatelessWidget {
+class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F2),
+  State<ChangePasswordPage> createState() => _ChangePasswordPageState();
+}
 
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        title: const Text(
-          "Change Password",
-          style: TextStyle(color: Colors.white),
-        ),
+class _ChangePasswordPageState extends State<ChangePasswordPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _currentController = TextEditingController();
+  final _newController = TextEditingController();
+  final _confirmController = TextEditingController();
+
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _currentController.dispose();
+    _newController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
+      _showMessage('No email account available.');
+      return;
+    }
+
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) {
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: _currentController.text,
+      );
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(_newController.text.trim());
+      if (!mounted) return;
+      _showMessage('Password updated.');
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Password update failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, {IconData? icon}) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: icon == null
+          ? null
+          : Icon(
+              icon,
+              color: AppColors.primary,
+            ),
+      filled: true,
+      fillColor: Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
       ),
-
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 25,
-              vertical: 30,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-
-                const Text(
-                  "CHANGE PASSWORD",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                _passwordField("Enter Old Password"),
-                const SizedBox(height: 18),
-                _passwordField("Enter New Password"),
-                const SizedBox(height: 18),
-                _passwordField("Confirm Password"),
-
-                const SizedBox(height: 30),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      elevation: 0,
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                    ),
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFB000E6),
-                            Color(0xFF6A1B9A),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "SUBMIT",
-                          style: TextStyle(
-                            color: Colors.white, // ✅ White text
-                            letterSpacing: 1,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(
+          color: AppColors.primary,
+          width: 2,
         ),
       ),
     );
   }
 
-  static Widget _passwordField(String hint) {
-    return TextField(
-      obscureText: true,
-      decoration: InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: const Color(0xFFF7F7F7),
-        prefixIcon: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(
-            color: Color(0xFF9C27B0),
-            shape: BoxShape.circle,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Change Password'),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Update your password',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'You will be asked to re-authenticate before changing.',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _currentController,
+                    obscureText: true,
+                    decoration: _inputDecoration(
+                      'Current password',
+                      icon: Icons.lock_outline,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter your current password';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _newController,
+                    obscureText: true,
+                    decoration: _inputDecoration(
+                      'New password',
+                      icon: Icons.lock,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter a new password';
+                      }
+                      if (value.trim().length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _confirmController,
+                    obscureText: true,
+                    decoration: _inputDecoration(
+                      'Confirm new password',
+                      icon: Icons.lock_reset,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Confirm your new password';
+                      }
+                      if (value.trim() != _newController.text.trim()) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _isSaving ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Update Password'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          child: const Icon(
-            Icons.lock,
-            color: Colors.white,
-            size: 18,
-          ),
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide.none,
-        ),
+        ],
       ),
     );
   }

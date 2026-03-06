@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nkhani/features/auth/user_model.dart';
 import 'package:nkhani/features/auth/user_service.dart';
@@ -10,6 +10,8 @@ import 'package:nkhani/features/profile/edit_profile_screen.dart';
 import 'package:nkhani/features/profile/settings_screen.dart';
 import 'package:nkhani/features/subscription/subscription_service.dart';
 
+const Color _brand = Color(0xFF8B1D76);
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -20,15 +22,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final SubscriptionService _subscriptionService = SubscriptionService();
   bool _isActivating = false;
-
-  final LinearGradient _purpleGradient = const LinearGradient(
-    colors: [
-      Color(0xFF7B1FA2),
-      Color(0xFF9C27B0),
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
@@ -78,185 +71,329 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Profile'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsPage(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: StreamBuilder<AppUser?>(
         stream: UserService().watchUser(user.uid),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text('User profile not found.'));
           }
 
           final appUser = snapshot.data!;
 
-          return Column(
+          final bottomPadding = MediaQuery.of(context).padding.bottom +
+              kBottomNavigationBarHeight +
+              16;
+
+          return ListView(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding),
             children: [
-              // 🔥 Gradient Header
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.only(
-                    top: 60, left: 20, right: 20, bottom: 30),
-                decoration: BoxDecoration(
-                  gradient: _purpleGradient,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 45,
-                      backgroundColor: Colors.white,
-                      backgroundImage: appUser.photoUrl?.isNotEmpty == true
-                          ? NetworkImage(appUser.photoUrl!)
-                          : null,
-                      child: appUser.photoUrl?.isNotEmpty == true
-                          ? null
-                          : Text(
-                        appUser.name.isNotEmpty
-                            ? appUser.name[0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      appUser.name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      appUser.email,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 🔥 Content Section
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    _buildCardTile(
-                      icon: Icons.edit,
-                      title: 'Edit Profile',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                EditProfileScreen(user: appUser),
-                          ),
-                        );
-                      },
-                    ),
-
-                    _buildCardTile(
-                      icon: Icons.settings,
-                      title: 'Settings',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsPage(),
-                          ),
-                        );
-                      },
-                    ),
-
-                    _buildCardTile(
-                      icon: Icons.subscriptions,
-                      title: 'Subscription',
-                      subtitle: _statusText(appUser),
-                      trailing: appUser.subscriptionActive
-                          ? const Icon(Icons.check_circle,
-                          color: Colors.green)
-                          : TextButton(
-                        onPressed: _isActivating
-                            ? null
-                            : () => _activateSubscription(user.uid),
-                        child: _isActivating
-                            ? const SizedBox(
-                                height: 16,
-                                width: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Activate'),
-                      ),
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.business),
-                title: const Text('Request Organization'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
+              _ProfileHeader(
+                name: appUser.name,
+                email: appUser.email,
+                photoUrl: appUser.photoUrl,
+                onEdit: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const OrganizationRequestScreen(),
+                      builder: (_) => EditProfileScreen(user: appUser),
                     ),
                   );
                 },
               ),
-              if (appUser.isOrganizationAdmin)
-                ListTile(
-                  leading: const Icon(Icons.post_add),
-                  title: const Text('Organization Studio'),
-                  trailing: const Icon(Icons.chevron_right),
+              const SizedBox(height: 20),
+              _sectionLabel('Account'),
+              _sectionCard([
+                _ProfileAction(
+                  icon: Icons.bookmark,
+                  title: 'Saved Stories',
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            const OrganizationStorySubmitScreen(),
+                        builder: (_) => const SavedStoriesScreen(),
                       ),
                     );
                   },
                 ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.redAccent),
-                title: const Text('Log out'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _logout,
-              ),
+                _ProfileAction(
+                  icon: Icons.subscriptions,
+                  title: 'Subscription',
+                  subtitle: _statusText(appUser),
+                  trailing: appUser.subscriptionActive
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : TextButton(
+                          onPressed: _isActivating
+                              ? null
+                              : () => _activateSubscription(user.uid),
+                          child: _isActivating
+                              ? const SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Activate'),
+                        ),
+                ),
+                if (appUser.isSuperuser)
+                  _ProfileAction(
+                    icon: Icons.admin_panel_settings,
+                    title: 'Admin Dashboard',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminHomeScreen(),
+                        ),
+                      );
+                    },
+                  ),
+              ]),
+              const SizedBox(height: 16),
+              _sectionLabel('Organizations'),
+              _sectionCard([
+                _ProfileAction(
+                  icon: Icons.business,
+                  title: 'Request Organization',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const OrganizationRequestScreen(),
+                      ),
+                    );
+                  },
+                ),
+                if (appUser.isSuperuser || appUser.isOrganizationAdmin)
+                  _ProfileAction(
+                    icon: Icons.post_add,
+                    title: 'Organization Studio',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const OrganizationStorySubmitScreen(),
+                        ),
+                      );
+                    },
+                  ),
+              ]),
+              const SizedBox(height: 16),
+              _sectionLabel('Account Actions'),
+              _sectionCard([
+                _ProfileAction(
+                  icon: Icons.logout,
+                  iconColor: Colors.redAccent,
+                  title: 'Log out',
+                  onTap: _logout,
+                ),
+              ]),
             ],
           );
         },
       ),
     );
   }
+}
 
-  Widget _buildCardTile({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Color iconColor = Colors.deepPurple,
-    Widget? trailing,
-    VoidCallback? onTap,
-  }) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+class _ProfileHeader extends StatelessWidget {
+  final String name;
+  final String email;
+  final String? photoUrl;
+  final VoidCallback onEdit;
+
+  const _ProfileHeader({
+    required this.name,
+    required this.email,
+    required this.photoUrl,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final handle = email.contains('@')
+        ? '@${email.split('@').first}'
+        : '@user';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: ListTile(
-        leading: Icon(icon, color: iconColor),
-        title: Text(title),
-        subtitle: subtitle != null ? Text(subtitle) : null,
-        trailing: trailing ?? const Icon(Icons.chevron_right),
-        onTap: onTap,
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 48,
+                backgroundColor: Colors.grey.shade200,
+                backgroundImage: photoUrl?.isNotEmpty == true
+                    ? NetworkImage(photoUrl!)
+                    : null,
+                child: photoUrl?.isNotEmpty == true
+                    ? null
+                    : Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+              ),
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: InkWell(
+                  onTap: onEdit,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _brand,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.edit, size: 14, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            handle,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: 160,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _brand,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              onPressed: onEdit,
+              child: const Text('Edit Profile'),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+Widget _sectionLabel(String text) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Colors.black54,
+      ),
+    ),
+  );
+}
+
+class _ProfileAction {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Color iconColor;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  const _ProfileAction({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.iconColor = _brand,
+    this.trailing,
+    this.onTap,
+  });
+}
+
+Widget _sectionCard(List<_ProfileAction> actions) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    ),
+    child: Column(
+      children: [
+        for (var i = 0; i < actions.length; i++) ...[
+          ListTile(
+            leading: Icon(actions[i].icon, color: actions[i].iconColor),
+            title: Text(
+              actions[i].title,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: actions[i].subtitle != null
+                ? Text(actions[i].subtitle!)
+                : null,
+            trailing:
+                actions[i].trailing ?? const Icon(Icons.chevron_right),
+            onTap: actions[i].onTap,
+          ),
+          if (i != actions.length - 1)
+            const Divider(height: 1, indent: 16, endIndent: 16),
+        ],
+      ],
+    ),
+  );
 }

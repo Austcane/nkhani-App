@@ -13,6 +13,7 @@ import 'package:nkhani/features/drafts/draft_comment_model.dart';
 import 'package:nkhani/features/drafts/draft_comment_service.dart';
 import 'package:nkhani/features/feed/news_model.dart';
 import 'package:nkhani/features/feed/news_service.dart';
+import 'package:nkhani/features/notifications/notification_service.dart';
 
 class OrganizationStorySubmitScreen extends StatefulWidget {
   const OrganizationStorySubmitScreen({super.key});
@@ -26,10 +27,12 @@ class _OrganizationStorySubmitScreenState
     extends State<OrganizationStorySubmitScreen> {
   static const Color _primaryColor = Color(0xFF8B1D76);
 
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _summaryController = TextEditingController();
   final _contentController = TextEditingController();
   final _newsService = NewsService();
+  final _notificationService = NotificationService();
   final _commentService = DraftCommentService();
   final _imagePicker = ImagePicker();
   final PageController _imagePageController = PageController();
@@ -143,16 +146,14 @@ class _OrganizationStorySubmitScreenState
   }
 
   Future<void> _submit(AppUser appUser) async {
+    final formState = _formKey.currentState;
+    if (formState == null || !formState.validate()) {
+      return;
+    }
+
     final title = _titleController.text.trim();
     final summary = _summaryController.text.trim();
     final content = _contentController.text.trim();
-
-    if (title.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Title and content are required.')),
-      );
-      return;
-    }
 
     setState(() {
       _isSubmitting = true;
@@ -174,6 +175,21 @@ class _OrganizationStorySubmitScreenState
         organizationId: appUser.organizationId,
         category: _selectedCategory,
       );
+
+      final superuserIds = await UserService().getSuperuserIds();
+      for (final adminId in superuserIds) {
+        if (adminId == appUser.uid) continue;
+        await _notificationService.createNotification(
+          userId: adminId,
+          title: 'New draft submitted',
+          body: '${appUser.name} submitted a draft for review.',
+          type: 'draft_submitted',
+          metadata: {
+            'authorId': appUser.uid,
+            'organizationId': appUser.organizationId,
+          },
+        );
+      }
 
       _titleController.clear();
       _summaryController.clear();
@@ -450,255 +466,311 @@ class _OrganizationStorySubmitScreenState
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Submit story draft',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _titleController,
-                      decoration: _inputDecoration(
-                        'Title',
-                        icon: Icons.title,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Article cover',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _summaryController,
-                      decoration: _inputDecoration(
-                        'Summary (optional)',
-                        icon: Icons.short_text,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      value: _selectedCategory,
-                      decoration: _inputDecoration(
-                        'Category',
-                        icon: Icons.category,
-                      ),
-                      style: const TextStyle(color: Colors.black87),
-                      items: News.categories
-                          .map((category) => DropdownMenuItem(
-                                value: category,
-                                child: Text(category),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedCategory = value);
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _contentController,
-                      maxLines: 5,
-                      decoration: _inputDecoration(
-                        'Content',
-                        icon: Icons.article,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Images (${_selectedImages.length}/$_maxImages)',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: _isSubmitting ? null : _pickImages,
+                        child: Container(
+                          height: 170,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(16),
+                            color: Colors.grey.shade100,
                           ),
-                          const SizedBox(height: 10),
-                          GestureDetector(
-                            onTap: _isSubmitting ? null : _pickImages,
-                            child: Container(
-                              height: 150,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(16),
-                                color: Colors.grey.shade100,
-                              ),
-                              child: _selectedImages.isEmpty
-                                  ? const Center(
-                                      child: Icon(
+                          child: _selectedImages.isEmpty
+                              ? const Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
                                         Icons.add_photo_alternate,
                                         size: 36,
                                         color: Color(0xFF8B1D76),
                                       ),
-                                    )
-                                  : ClipRRect(
-                                      borderRadius: BorderRadius.circular(16),
-                                      child: Stack(
-                                        children: [
-                                          PageView.builder(
-                                            controller: _imagePageController,
-                                            itemCount: _selectedImages.length,
-                                            onPageChanged: (index) {
-                                              setState(() {
-                                                _currentImageIndex = index;
-                                              });
-                                            },
-                                            itemBuilder: (context, index) {
-                                              final image = _selectedImages[index];
-                                              return Image.file(
-                                                image,
-                                                width: double.infinity,
-                                                height: double.infinity,
-                                                fit: BoxFit.cover,
-                                              );
-                                            },
-                                          ),
-                                          if (_selectedImages.length > 1)
-                                            Positioned(
-                                              bottom: 8,
-                                              left: 0,
-                                              right: 0,
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: List.generate(
-                                                  _selectedImages.length,
-                                                  (index) {
-                                                    final isActive =
-                                                        index == _currentImageIndex;
-                                                    return Container(
-                                                      margin:
-                                                          const EdgeInsets.symmetric(
-                                                        horizontal: 3,
-                                                      ),
-                                                      width: isActive ? 8 : 6,
-                                                      height: isActive ? 8 : 6,
-                                                      decoration: BoxDecoration(
-                                                        color: isActive
-                                                            ? Colors.white
-                                                            : Colors.white70,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          if (_selectedImages.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    '${_selectedImages.length} image(s) selected',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  TextButton(
-                                    onPressed: _isSubmitting
-                                        ? null
-                                        : () {
-                                            setState(() {
-                                              _selectedImages.clear();
-                                            });
-                                          },
-                                    child: const Text('Clear'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (_selectedImages.length > 1)
-                            SizedBox(
-                              height: 72,
-                              child: ListView.separated(
-                                padding: const EdgeInsets.only(top: 10),
-                                scrollDirection: Axis.horizontal,
-                                itemCount: _selectedImages.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 8),
-                                itemBuilder: (context, index) {
-                                  final image = _selectedImages[index];
-                                  return Stack(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: Image.file(
-                                          image,
-                                          width: 72,
-                                          height: 72,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        right: -6,
-                                        top: -6,
-                                        child: IconButton(
-                                          icon: const Icon(Icons.cancel, size: 18),
-                                          onPressed: () {
-                                            setState(() {
-                                              _selectedImages.removeAt(index);
-                                            });
-                                          },
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Add article cover',
+                                        style: TextStyle(
+                                          color: Colors.black54,
                                         ),
                                       ),
                                     ],
-                                  );
-                                },
-                              ),
-                            ),
-                        ],
+                                  ),
+                                )
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Stack(
+                                    children: [
+                                      PageView.builder(
+                                        controller: _imagePageController,
+                                        itemCount: _selectedImages.length,
+                                        onPageChanged: (index) {
+                                          setState(() {
+                                            _currentImageIndex = index;
+                                          });
+                                        },
+                                        itemBuilder: (context, index) {
+                                          final image = _selectedImages[index];
+                                          return Image.file(
+                                            image,
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                            fit: BoxFit.cover,
+                                          );
+                                        },
+                                      ),
+                                      if (_selectedImages.length > 1)
+                                        Positioned(
+                                          bottom: 8,
+                                          left: 0,
+                                          right: 0,
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: List.generate(
+                                              _selectedImages.length,
+                                              (index) {
+                                                final isActive =
+                                                    index == _currentImageIndex;
+                                                return Container(
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                    horizontal: 3,
+                                                  ),
+                                                  width: isActive ? 8 : 6,
+                                                  height: isActive ? 8 : 6,
+                                                  decoration: BoxDecoration(
+                                                    color: isActive
+                                                        ? Colors.white
+                                                        : Colors.white70,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_isSubmitting && _selectedImages.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          LinearProgressIndicator(value: _uploadProgress),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      if (_selectedImages.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
                             children: [
-                              Text('${(_uploadProgress * 100).round()}% uploaded'),
+                              Text(
+                                '${_selectedImages.length} image(s) selected',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const Spacer(),
                               TextButton(
-                                onPressed: _cancelUploads,
-                                child: const Text('Cancel'),
+                                onPressed: _isSubmitting
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          _selectedImages.clear();
+                                        });
+                                      },
+                                child: const Text('Clear'),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _isSubmitting ? null : () => _submit(appUser),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B1D76),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                        ),
+                      if (_selectedImages.length > 1)
+                        SizedBox(
+                          height: 72,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.only(top: 10),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _selectedImages.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              final image = _selectedImages[index];
+                              return Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.file(
+                                      image,
+                                      width: 72,
+                                      height: 72,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: -6,
+                                    top: -6,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.cancel, size: 18),
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedImages.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
-                        child: _isSubmitting
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Submit Draft'),
-                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
                     ),
                   ],
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Submit story draft',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _titleController,
+                        decoration: _inputDecoration(
+                          'Title',
+                          icon: Icons.title,
+                        ),
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Title is required';
+                          }
+                          if (value.trim().length < 4) {
+                            return 'Title is too short';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _summaryController,
+                        decoration: _inputDecoration(
+                          'Summary (optional)',
+                          icon: Icons.short_text,
+                        ),
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (value != null && value.trim().isNotEmpty) {
+                            if (value.trim().length < 10) {
+                              return 'Summary is too short';
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedCategory,
+                        decoration: _inputDecoration(
+                          'Category',
+                          icon: Icons.category,
+                        ),
+                        style: const TextStyle(color: Colors.black87),
+                        items: News.categories
+                            .map((category) => DropdownMenuItem(
+                                  value: category,
+                                  child: Text(category),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedCategory = value);
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _contentController,
+                        maxLines: 6,
+                        decoration: _inputDecoration(
+                          'Content',
+                          icon: Icons.article,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Content is required';
+                          }
+                          if (value.trim().length < 30) {
+                            return 'Content is too short';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      if (_isSubmitting && _selectedImages.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            LinearProgressIndicator(value: _uploadProgress),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${(_uploadProgress * 100).round()}% uploaded'),
+                                TextButton(
+                                  onPressed: _cancelUploads,
+                                  child: const Text('Cancel'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _isSubmitting ? null : () => _submit(appUser),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B1D76),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Submit Draft'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 18),

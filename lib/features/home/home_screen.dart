@@ -8,6 +8,7 @@ import 'package:nkhani/features/feed/news_service.dart';
 import 'package:nkhani/features/feed/story_detail_screen.dart';
 import 'package:nkhani/features/home/news_search_delegate.dart';
 import 'package:nkhani/features/notifications/notification_screen.dart';
+import 'package:nkhani/features/notifications/notification_service.dart';
 import 'package:nkhani/features/organizations/media_profile_screen.dart';
 import 'package:nkhani/features/organizations/org_model.dart';
 import 'package:nkhani/features/organizations/org_service.dart';
@@ -180,11 +181,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 const Spacer(),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.notifications,
-                                    color: Colors.white,
-                                  ),
+                                _NotificationBell(
+                                  userId: firebaseUser.uid,
                                   onPressed: _openNotifications,
                                 ),
                               ],
@@ -322,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            _MediaStrip(),
+                            const _MediaStrip(),
                             const SizedBox(height: 18),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -379,6 +377,64 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _NotificationBell extends StatelessWidget {
+  final String userId;
+  final VoidCallback onPressed;
+
+  const _NotificationBell({
+    required this.userId,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<int>(
+      stream: NotificationService().watchUnreadCount(userId),
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.notifications,
+                color: Colors.white,
+              ),
+              onPressed: onPressed,
+            ),
+            if (count > 0)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 18),
+                  child: Text(
+                    count > 99 ? '99+' : count.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

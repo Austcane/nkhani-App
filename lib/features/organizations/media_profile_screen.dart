@@ -110,9 +110,9 @@ class MediaProfileScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _StatItem(label: 'News', value: '$newsCount'),
-                    _StatItem(label: 'Followers', value: '0'),
-                    _StatItem(label: 'Following', value: '0'),
-                    _StatItem(label: 'Upvoted', value: '0'),
+                    const _StatItem(label: 'Followers', value: '0'),
+                    const _StatItem(label: 'Following', value: '0'),
+                    const _StatItem(label: 'Upvoted', value: '0'),
                   ],
                 ),
               ),

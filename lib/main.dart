@@ -5,12 +5,15 @@ import 'package:nkhani/features/auth/login_screen.dart';
 import 'package:nkhani/features/auth/splash_screen.dart';
 import 'package:nkhani/features/auth/user_service.dart';
 import 'package:nkhani/navigation/main_navigation.dart';
+import 'package:nkhani/theme/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(const NkhaniApp());
 }
+
+final ThemeController _themeController = ThemeController();
 
 class NkhaniApp extends StatelessWidget {
   const NkhaniApp({super.key});
@@ -20,28 +23,58 @@ class NkhaniApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Nkhani',
-      theme: ThemeData(
-        primaryColor: _primary,
-        colorScheme: const ColorScheme.light(
-          primary: _primary,
-          secondary: _secondary,
-          surface: Colors.white,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: _primary,
-          foregroundColor: Colors.white,
-          iconTheme: IconThemeData(color: Colors.white),
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+    return ThemeControllerScope(
+      controller: _themeController,
+      child: AnimatedBuilder(
+        animation: _themeController,
+        builder: (context, _) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Nkhani',
+            theme: ThemeData(
+              primaryColor: _primary,
+              colorScheme: const ColorScheme.light(
+                primary: _primary,
+                secondary: _secondary,
+                surface: Colors.white,
+              ),
+              scaffoldBackgroundColor: Colors.white,
+              appBarTheme: const AppBarTheme(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                iconTheme: IconThemeData(color: Colors.white),
+                titleTextStyle: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            darkTheme: ThemeData(
+              brightness: Brightness.dark,
+              primaryColor: _primary,
+              colorScheme: ColorScheme.dark(
+                primary: _primary,
+                secondary: _secondary,
+                surface: const Color(0xFF1C1C1E),
+              ),
+              scaffoldBackgroundColor: const Color(0xFF0E0E10),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                iconTheme: IconThemeData(color: Colors.white),
+                titleTextStyle: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            themeMode: _themeController.mode,
+            home: const AuthWrapper(),
+          );
+        },
       ),
-      home: const AuthWrapper(),
     );
   }
 }

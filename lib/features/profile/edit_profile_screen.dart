@@ -145,76 +145,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Future<void> _changePassword() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null || currentUser.email == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No email account available.')),
-      );
-      return;
-    }
-
-    final currentPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Change Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: currentPasswordController,
-                decoration:
-                    const InputDecoration(labelText: 'Current password'),
-                obscureText: true,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: newPasswordController,
-                decoration:
-                    const InputDecoration(labelText: 'New password'),
-                obscureText: true,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Update'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      final credential = EmailAuthProvider.credential(
-        email: currentUser.email!,
-        password: currentPasswordController.text,
-      );
-      await currentUser.reauthenticateWithCredential(credential);
-      await currentUser.updatePassword(newPasswordController.text.trim());
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password updated.')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Password update failed: $e')),
-      );
-    }
-  }
-
   Future<void> _pickProfileImage() async {
     if (_isUploadingImage) return;
     final picked = await _imagePicker.pickImage(
@@ -420,14 +350,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('Password'),
-            subtitle: const Text('Update your password'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _changePassword,
-          ),
           if (_isSaving) ...[
             const SizedBox(height: 16),
             const Center(child: CircularProgressIndicator()),
